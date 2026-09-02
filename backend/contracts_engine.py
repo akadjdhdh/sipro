@@ -147,9 +147,12 @@ async def build_breakdown(org: str, contract: dict) -> dict:
                 note="Hanya berlaku pada skema KPR.")
             continue
         val = costs.get(field)
-        add(code, label, val, group="biaya", treatment=treatment,
+        dev_borne = bool(costs.get("all_in_by_developer")) and treatment == "pass_through"
+        add(code, label, val, group="biaya",
+            treatment="developer_borne" if dev_borne else treatment,
             state="filled" if val is not None else "empty",
-            note=None if val is not None else "Belum diisi — bukan nol.")
+            note=("Harga all-in: ditanggung developer, tidak ditagih ke pembeli." if dev_borne
+                  else (None if val is not None else "Belum diisi — bukan nol.")))
 
     if scheme == "kpr":
         plafon = costs.get("plafon_kredit")
@@ -175,7 +178,11 @@ async def build_breakdown(org: str, contract: dict) -> dict:
     # PPH_SELLER, BANK_FEE" apa adanya. Kode adalah bahasa mesin; pembeli tidak berutang
     # pengetahuan itu kepada kita.
     empty_labels = [r["label"] for r in cost_rows if r["state"] == "empty"]
-    costs_total = sum(int(r["amount"] or 0) for r in cost_rows if r["state"] == "filled")
+    costs_total = sum(int(r["amount"] or 0) for r in cost_rows
+                      if r["state"] == "filled" and r["finance_treatment"] != "developer_borne")
+    developer_borne_total = sum(int(r["amount"] or 0) for r in cost_rows
+                                if r["state"] == "filled"
+                                and r["finance_treatment"] == "developer_borne")
     plafon = amt("PLAFON_KREDIT")
     self_funding = None
     if scheme == "kpr" and plafon is not None:
@@ -186,6 +193,8 @@ async def build_breakdown(org: str, contract: dict) -> dict:
         "promo_discount": int(amt("PROMO_DISCOUNT") or 0),
         "nett_price": nett,
         "costs_total": costs_total,
+        "all_in_by_developer": bool(costs.get("all_in_by_developer")),
+        "developer_borne_total": developer_borne_total,
         "costs_incomplete": empty,
         "costs_incomplete_labels": empty_labels,
         "total_bill": nett + costs_total,
@@ -305,7 +314,8 @@ async def ensure_contract(org: str, deal: dict, customer: dict, scheme: str,
         "project_id": deal.get("project_id"), "project_name": project.get("name"),
         "scheme": scheme, "scheme_label": ref.label_of("payment_scheme", scheme),
         "state": "draft", "legal_stage": "belum",
-        "costs": {}, "legal": {}, "legal_history": [],
+        # Biaya transaksi yang sudah diisi saat SPR ikut ke kontrak — tidak diketik dua kali.
+        "costs": dict(deal.get("costs") or {}), "legal": {}, "legal_history": [],
         "assigned_to": deal.get("assigned_to"),
         "quotation_id": deal.get("quotation_id"),
         "created_by": actor, "created_at": ts, "updated_at": ts,

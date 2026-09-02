@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Plus, TicketPercent, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Plus, TicketPercent, Trash2, XCircle, Receipt } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ const NONE = "__none__";
  * Angka akhir selalu hasil `POST /quotations/simulate` — satu mesin harga.
  */
 export default function PricingFields({
-  form, set, setKpr, unitId, leadId, schemes = [], addonMaster = [], ids, showKpr = true,
+  form, set, setKpr, unitId, leadId, schemes = [], addonMaster = [], ids, showKpr = true, showCosts = false,
 }) {
   const [rules, setRules] = useState({ discount_schemes: [], promos: [] });
   const [addonPick, setAddonPick] = useState("");
@@ -86,32 +86,91 @@ export default function PricingFields({
             </SelectTrigger>
             <SelectContent>
               {addonMaster.map((a) => (
-                <SelectItem key={a.code} value={a.code}>{a.name} ({a.code})</SelectItem>
+                <SelectItem key={a.code} value={a.code}>
+                  {a.name} · {addonPriceLabel(a)}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Button type="button" variant="secondary" data-testid={ids.addonAddBtn}
             onClick={addAddon}><Plus className="h-4 w-4" /></Button>
         </div>
-        {form.addons.map((a, i) => (
-          <div key={a.code}
-            className="flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 shadow-[var(--shadow-card)]">
-            <span className="flex-1 text-sm">{a.name || a.code}</span>
-            <Input type="number" min="0.1" step="0.1" value={a.qty}
-              aria-label={`Volume tambahan ${a.name || a.code}`} className="w-24"
+        {form.addons.map((a, i) => {
+          const m = addonMaster.find((x) => x.code === a.code) || a;
+          const sub = addonSubtotal(m, a.qty);
+          return (
+          <div key={a.code} data-testid="pricing-addon-row"
+            className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-md border bg-card px-2 py-1.5 shadow-[var(--shadow-card)]">
+            <div className="min-w-0">
+              <p className="truncate text-sm">{a.name || a.code}</p>
+              <p className={`text-[11px] ${Number(m.unit_price) ? "text-muted-foreground" : "text-amber-700"}`}>{addonPriceLabel(m)}</p>
+            </div>
+            <Input type="number" min="0.1" step="0.1" value={a.qty} disabled={!isQtyMode(m)} title={isQtyMode(m) ? `Volume (${m.uom || "unit"})` : "Harga tetap per unit"}
+              aria-label={`Volume tambahan ${a.name || a.code}`} className="w-20"
               onChange={(e) => {
                 const next = [...form.addons];
                 next[i] = { ...a, qty: e.target.value };
                 set({ addons: next });
               }} />
+            <span data-testid="pricing-addon-subtotal" className="w-28 text-right text-sm font-semibold tabular-nums">
+              {sub == null ? "— sesuai harga" : formatIDR(sub)}
+            </span>
             <Button type="button" size="sm" variant="ghost"
               aria-label={`Hapus tambahan ${a.name || a.code}`}
               onClick={() => set({ addons: form.addons.filter((x) => x.code !== a.code) })}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
-        ))}
+          );
+        })}
+        {form.addons.some((a) => !Number((addonMaster.find((x) => x.code === a.code) || {}).unit_price)) ? (
+          <p data-testid="pricing-addon-price-warning" className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+            Ada add-on yang harganya masih Rp 0 di master. Isi harganya di <strong>Pusat Konfigurasi › Add-on</strong> agar
+            masuk ke penawaran, SPR, dan komponen pembayaran — jangan simpan dengan Rp 0.
+          </p>
+        ) : null}
+        {form.addons.length ? (
+          <p className="text-right text-xs text-muted-foreground">
+            Subtotal add-on: <strong data-testid="pricing-addon-total">{formatIDR(form.addons.reduce((t, a) => t + (addonSubtotal(addonMaster.find((x) => x.code === a.code) || a, a.qty) || 0), 0))}</strong>
+            {form.addons.some((a) => (addonMaster.find((x) => x.code === a.code) || {}).pricing_mode === "percent_of_price") ? " + add-on persentase (dihitung mesin)" : ""}
+          </p>
+        ) : null}
       </div>
+
+      {showCosts ? (
+        <div className="rounded-lg border border-sky-200/70 bg-sky-50/40 p-3 space-y-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-sky-900">
+            <Receipt className="h-3.5 w-3.5" /> Biaya transaksi (all-in)
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Komponen di luar harga unit: BPHTB, notaris/akad, bank, asuransi. Kosong = belum diketahui (bukan Rp 0).
+            Ikut ke kontrak & rincian tagihan.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {COST_FIELDS.map(([key, label]) => (
+              <div key={key} className="space-y-1">
+                <Label htmlFor={`cost-${key}`} className="text-xs">{label}</Label>
+                <Input id={`cost-${key}`} type="number" min="0" data-testid={`pricing-cost-${key}`}
+                  value={form.costs?.[key] ?? ""} placeholder="belum diketahui"
+                  onChange={(e) => set({ costs: { ...(form.costs || {}), [key]: e.target.value } })} />
+              </div>
+            ))}
+          </div>
+          <label className="flex items-start gap-2 text-xs">
+            <input type="checkbox" data-testid="pricing-cost-all-in" className="mt-0.5"
+              checked={!!form.costs?.all_in_by_developer}
+              onChange={(e) => set({ costs: { ...(form.costs || {}), all_in_by_developer: e.target.checked } })} />
+            <span><strong>Harga all-in</strong> — biaya di atas ditanggung developer, tidak ditagih ke pembeli
+              (tetap tercatat sebagai beban penjualan).</span>
+          </label>
+          {costsTotal(form.costs) > 0 ? (
+            <p className="text-right text-xs">
+              Total biaya: <strong data-testid="pricing-cost-total">{formatIDR(costsTotal(form.costs))}</strong>
+              {form.costs?.all_in_by_developer ? " · ditanggung developer" : " · ditagih ke pembeli"}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/40 p-3 space-y-2">
         <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-emerald-900">
@@ -212,6 +271,32 @@ export default function PricingFields({
   );
 }
 
+export const COST_FIELDS = [
+  ["bphtb", "BPHTB"], ["notary_fee", "Biaya notaris / akad"],
+  ["bank_fee", "Biaya bank (provisi, admin, materai)"], ["insurance", "Asuransi jiwa & kebakaran"],
+];
+export const costsTotal = (c) => COST_FIELDS.reduce((t, [k]) => t + (Number(c?.[k]) || 0), 0);
+const isQtyMode = (m) => m && !["lump_sum", "percent_of_price"].includes(m.pricing_mode || "lump_sum");
+export const addonPriceLabel = (m) => {
+  if (!m) return "";
+  if (!Number(m.unit_price)) return "harga belum diisi di master";
+  if (m.pricing_mode === "percent_of_price") return `${m.unit_price}% × harga unit`;
+  if (isQtyMode(m)) return `${formatIDR(m.unit_price)} / ${m.uom || "unit"}`;
+  return formatIDR(m.unit_price || 0);
+};
+export const addonSubtotal = (m, qty) => {
+  if (!m || m.pricing_mode === "percent_of_price") return null;
+  const q = isQtyMode(m) ? (Number(qty) || 1) : 1;
+  return Math.round((Number(m.unit_price) || 0) * q);
+};
+export const costsPayload = (c) => {
+  if (!c) return null;
+  const out = {};
+  COST_FIELDS.forEach(([k]) => { if (c[k] !== "" && c[k] != null) out[k] = Number(c[k]); });
+  if (c.all_in_by_developer) out.all_in_by_developer = true;
+  return Object.keys(out).length ? out : null;
+};
+
 export const pricingPayload = (form) => ({
   scheme_id: form.scheme_id || null,
   addons: form.addons.map((a) => ({ code: a.code, qty: Number(a.qty) || 1 })),
@@ -228,4 +313,5 @@ export const pricingPayload = (form) => ({
 export const EMPTY_PRICING = {
   scheme_id: "", addons: [], discount_scheme_id: "", promo_id: "", coupon_code: "",
   kpr: { tenor_months: "", annual_rate_pct: "", dp_pct: "" },
+  costs: {},
 };

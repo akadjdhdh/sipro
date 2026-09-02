@@ -245,6 +245,9 @@ class DealReserve(BaseModel):
     promo_id: Optional[str] = None
     coupon_code: Optional[str] = None
     kpr: Optional[dict] = None
+    # Biaya transaksi (BPHTB, notaris, bank, asuransi) + penanda "harga all-in" (biaya
+    # ditanggung developer). Diisi saat SPR → dibawa ke kontrak (`contracts.costs`).
+    costs: Optional[dict] = None
 
 
 class DealAction(BaseModel):

@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import QuotationBreakdown from "@/components/quotations/QuotationBreakdown";
-import PricingFields, { EMPTY_PRICING, pricingPayload } from "@/components/pricing/PricingFields";
+import PricingFields, { EMPTY_PRICING, costsPayload, costsTotal, pricingPayload } from "@/components/pricing/PricingFields";
 import { formatIDR } from "@/utils/formatters";
 import api from "@/services/apiClient";
 import { DEALS, RESERVE } from "@/constants/testIds";
@@ -81,7 +81,7 @@ export default function ReserveDialog({
     try {
       const res = await api.post("/deals/reserve", {
         unit_id: unit, lead_id: lead, booking_fee: Number(form.booking_fee) || 0,
-        ...pricingPayload(form),
+        ...pricingPayload(form), costs: costsPayload(form.costs),
       });
       toast.success("Unit berhasil di-reserve (hold aktif) — rincian harga tersimpan.");
       onOpenChange(false);
@@ -93,17 +93,17 @@ export default function ReserveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-testid={RESERVE.dialog} className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent data-testid={RESERVE.dialog} className="max-h-[94vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle>Buat Reservasi (SPR)</DialogTitle>
           <DialogDescription>
             {mode === "byLead"
-              ? `Pesan unit tersedia untuk lead: ${leadName || ""}`
-              : `Pilih lead untuk unit: ${unitLabel || ""}`}
-            {" · "}Harga, add-on, potongan, dan termin dihitung mesin yang sama dengan penawaran.
+              ? `Pesan unit tersedia untuk lead ${leadName || ""}.`
+              : `Pilih lead untuk unit ${unitLabel || ""}.`}
+            {" "}Harga dihitung mesin yang sama dengan penawaran.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>{mode === "byLead" ? "Unit Tersedia" : "Lead"}</Label>
@@ -125,14 +125,15 @@ export default function ReserveDialog({
               ) : null}
             </div>
             <PricingFields form={form} set={set} setKpr={setKpr} unitId={unit} leadId={lead}
-              schemes={schemes} addonMaster={addonMaster} ids={RESERVE} />
+              schemes={schemes} addonMaster={addonMaster} ids={RESERVE} showCosts />
             <div className="space-y-1.5">
-              <Label htmlFor="fee">Booking fee (Rp) — tanda jadi, bukan bagian potongan</Label>
+              <Label htmlFor="fee">Booking fee / tanda jadi (Rp)</Label>
               <Input id="fee" type="number" data-testid={RESERVE.bookingFee} value={form.booking_fee}
                 onChange={(e) => setForm((f) => ({ ...f, booking_fee: e.target.value }))} />
+              <p className="text-xs text-muted-foreground">Dibayar saat keep unit; dialihkan ke termin saat SPR sah — bukan potongan harga.</p>
             </div>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 lg:sticky lg:top-0 lg:self-start">
             <Button type="button" variant="secondary" className="w-full"
               data-testid={RESERVE.simulateBtn} disabled={simBusy} onClick={simulate}>
               <RefreshCw className={`mr-1.5 h-4 w-4 ${simBusy ? "animate-spin" : ""}`} />
@@ -142,10 +143,25 @@ export default function ReserveDialog({
               <p data-testid={RESERVE.error}
                 className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
             ) : null}
-            {calc ? <div data-testid={RESERVE.breakdown}><QuotationBreakdown calc={calc} /></div> : (
+            {calc ? (
+              <div data-testid={RESERVE.breakdown}>
+                <QuotationBreakdown calc={calc} />
+                {costsTotal(form.costs) > 0 ? (
+                  <div data-testid={RESERVE.costsSummary} className="mt-2 rounded-lg border bg-card p-3 text-sm">
+                    <div className="flex justify-between"><span>Biaya transaksi</span><strong>{formatIDR(costsTotal(form.costs))}</strong></div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{form.costs?.all_in_by_developer ? "Harga all-in — ditanggung developer" : "Ditagih ke pembeli di luar harga unit"}</span>
+                    </div>
+                    <div className="mt-1 flex justify-between border-t pt-1 font-semibold">
+                      <span>Total dibayar pembeli</span>
+                      <span>{formatIDR((calc.net_price || 0) + (form.costs?.all_in_by_developer ? 0 : costsTotal(form.costs)))}</span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
               <p className="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground">
-                Tekan “Hitung rincian harga” untuk melihat harga dasar, add-on, potongan, dan
-                termin sebelum unit dikunci.
+                Tekan “Hitung rincian harga” untuk melihat harga dasar, add-on, potongan, dan termin sebelum unit dikunci.
               </p>
             )}
             {calc?.needs_discount_approval ? (

@@ -86,6 +86,7 @@ export const RESERVE = {
   dialog: "reserve-dialog",
   schemeSelect: "reserve-scheme-select",
   addonSelect: "reserve-addon-select",
+  costsSummary: "reserve-costs-summary",
   addonAddBtn: "reserve-addon-add-button",
   discountSelect: "reserve-discount-scheme-select",
   promoSelect: "reserve-promo-select",

@@ -123,6 +123,17 @@ export default function KprPanel({ contract, onChanged }) {
         </div>
       ) : null}
 
+      {app.disbursement?.amount ? (
+        <div data-testid="kpr-disbursement-accounting" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+          <p className="font-medium">Pencairan bank {formatIDR(app.disbursement.amount)} · {app.disbursement.date}</p>
+          <p className="mt-0.5 text-xs">
+            {app.disbursement.receipt_no
+              ? <>Dibukukan sebagai kuitansi <strong>{app.disbursement.receipt_no}</strong> (metode KPR) → melunasi termin piutang pembeli & tercatat di buku besar (kas masuk, piutang berkurang).{app.disbursement.deposit_excess ? ` Kelebihan ${formatIDR(app.disbursement.deposit_excess)} jadi titipan.` : ""}</>
+              : <span className="text-amber-800">Pencairan lama tanpa kuitansi — belum mengurangi piutang. Catat ulang lewat Pembiayaan › Pencairan bila perlu.</span>}
+          </p>
+        </div>
+      ) : null}
+
       <ol className="space-y-2">
         {(kpr.stages || []).map((s) => (
           <li key={s.stage} data-testid={P53.kprStage} data-stage={s.stage}
@@ -215,9 +226,15 @@ export default function KprPanel({ contract, onChanged }) {
             ) : null}
             {fields.includes("amount") ? (
               <div className="space-y-1.5">
-                <Label htmlFor="kpr-amt">Nilai (Rp)</Label>
-                <Input id="kpr-amt" inputMode="numeric" className="bg-background"
+                <Label htmlFor="kpr-amt">{stage === "pencairan" ? "Nominal dicairkan bank (Rp) — wajib" : "Nilai (Rp)"}</Label>
+                <Input id="kpr-amt" inputMode="numeric" className="bg-background" data-testid="kpr-stage-amount"
                   value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} />
+                {stage === "pencairan" ? (
+                  <p className="text-xs text-muted-foreground">
+                    Dana ini otomatis dibukukan sebagai kuitansi (metode KPR): melunasi termin piutang pembeli dan
+                    membuat jurnal kas masuk di buku besar. Kelebihan di atas piutang menjadi titipan.
+                  </p>
+                ) : null}
               </div>
             ) : null}
             {fields.includes("date") || fields.includes("valid_until") ? (

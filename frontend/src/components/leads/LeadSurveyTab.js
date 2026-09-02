@@ -6,6 +6,8 @@ import StatusPill from "@/components/patterns/StatusPill";
 import EmptyState from "@/components/patterns/EmptyState";
 import { PanelStateView } from "@/components/patterns/StateViews";
 import AppointmentDialog from "@/components/sales/AppointmentDialog";
+import AppointmentDetailSheet from "@/components/appointments/AppointmentDetailSheet";
+import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { formatDateTimeWIB } from "@/utils/formatters";
 import { LEADS } from "@/constants/testIds";
@@ -27,6 +29,7 @@ export default function LeadSurveyTab({
   const { can } = useAuth();
   const mayCreate = can("appointments", "create");
   const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
 
   const blocked = (
     <PanelStateView panel={panel} subject="Jadwal survei & janji temu" onRetry={onRetry}
@@ -59,18 +62,21 @@ export default function LeadSurveyTab({
       {appointments.length ? (
         <div className="space-y-2">
           {appointments.map((ap) => (
-            <div key={ap.id} data-testid="lead-appointment-row" data-appointment={ap.id}
-              aria-label={`Survei ${ap.title}`}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3 shadow-[var(--shadow-card)]">
+            <button type="button" key={ap.id} data-testid="lead-appointment-row" data-appointment={ap.id}
+              aria-label={`Buka detail survei ${ap.title}`} onClick={() => setDetail(ap)}
+              className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3 text-left shadow-[var(--shadow-card)] transition-colors hover:border-primary/40 hover:bg-accent/40">
               <div>
                 <p className="text-sm font-medium">{ap.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatDateTimeWIB(ap.scheduled_at)} · {ap.location || "-"}
+                  {formatDateTimeWIB(ap.scheduled_at)} · {ap.location || "-"} · klik untuk detail, ubah status & hasil
                 </p>
               </div>
-              <StatusPill status={ap.status} group="appointment_status"
-                tone={ap.status === "scheduled" ? "active" : ap.status} />
-            </div>
+              <span className="flex items-center gap-2">
+                <StatusPill status={ap.status} group="appointment_status"
+                  tone={ap.status === "scheduled" ? "active" : ap.status} />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </span>
+            </button>
           ))}
         </div>
       ) : (
@@ -85,6 +91,8 @@ export default function LeadSurveyTab({
         <AppointmentDialog leadId={leadId} open={open} onOpenChange={setOpen}
           onDone={onChanged} />
       ) : null}
+      <AppointmentDetailSheet appointment={detail} open={!!detail}
+        onOpenChange={(v) => !v && setDetail(null)} onChanged={() => { setDetail(null); onChanged && onChanged(); }} />
     </div>
   );
 }

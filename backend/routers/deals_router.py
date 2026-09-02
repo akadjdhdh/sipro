@@ -126,6 +126,21 @@ async def get_deal(deal_id: str, user: dict = Depends(require_permission("deals"
     return {"data": serialize_doc(d)}
 
 
+_COST_KEYS = ("bphtb", "notary_fee", "bank_fee", "insurance", "pph_seller", "promo_discount")
+
+
+def _clean_costs(costs) -> dict:
+    """Hanya angka ≥0 yang diisi manusia + penanda all-in; kosong = belum diketahui."""
+    out = {}
+    for k in _COST_KEYS:
+        v = (costs or {}).get(k)
+        if v not in (None, "") and int(v) >= 0:
+            out[k] = int(v)
+    if (costs or {}).get("all_in_by_developer"):
+        out["all_in_by_developer"] = True
+    return out
+
+
 @router.post("/deals/reserve")
 async def reserve_unit(payload: DealReserve,
                        user: dict = Depends(require_permission("deals", "create"))):
@@ -170,7 +185,8 @@ async def reserve_unit(payload: DealReserve,
                                        "discount": int(calc["discount_amount"] or 0),
                                        "addons": calc["addons"],
                                        "scheme_id": (calc.get("scheme") or {}).get("id"),
-                                       "pricing": qe.pricing_snapshot(calc)})
+                                       "pricing": qe.pricing_snapshot(calc),
+                                       "costs": _clean_costs(payload.costs)})
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     if calc.get("coupon_code"):

@@ -112,10 +112,16 @@ async def kpr_advance(org: str, contract_id: str, stage: str, payload: dict,
         raise ValueError("Kontrak ini bukan skema KPR.")
     if stage not in KPR_ORDER and stage not in ("ditolak", "batal"):
         raise ValueError(f"Tahap KPR '{stage}' tidak dikenal.")
+    existed = await db.financing_apps.find_one({"org_id": org, "deal_id": c["deal_id"]}, {"_id": 1})
     app = await ensure_kpr_app(org, c, actor, bank=payload.get("bank"))
     use_appraisal = bool(await cfg.get("kpr.use_appraisal_step", org_id=org))
     order = [s for s in KPR_ORDER if s != "appraisal" or use_appraisal]
-    cur = app.get("kpr_stage") or "berkas_lengkap"
+    cur = app.get("kpr_stage") if existed else None
+    # Belum ada tahap tercatat → satu-satunya langkah sah adalah tahap pertama. (Dulu
+    # `cur` default "berkas_lengkap" sehingga tombol "Catat Berkas lengkap" di UI selalu
+    # ditolak "sudah dilewati" — padahal status KPR bilang itu tahap berikutnya.)
+    if stage in order and not cur and stage != order[0]:
+        raise ValueError(f"Tahap sebelumnya belum selesai: {ref.label_of('kpr_stage', order[0])}.")
     if stage in order and cur in order and order.index(stage) <= order.index(cur):
         raise ValueError(f"Tahap {ref.label_of('kpr_stage', stage)} sudah dilewati.")
     if stage in order and cur in order and order.index(stage) > order.index(cur) + 1:
@@ -124,6 +130,7 @@ async def kpr_advance(org: str, contract_id: str, stage: str, payload: dict,
                          f"{ref.label_of('kpr_stage', lewat)}.")
     ts = now_iso()
     setter = {"kpr_stage": stage, "updated_at": ts}
+    extra_push = {}
     if payload.get("bank"):
         setter["bank_name"] = payload["bank"]
     if stage == "sp3k":
@@ -171,16 +178,41 @@ async def kpr_advance(org: str, contract_id: str, stage: str, payload: dict,
     if stage == "pencairan":
         if not (app.get("akad") or {}).get("date"):
             raise ValueError("Pencairan butuh akad kredit yang sudah tercatat.")
-        setter["disbursement"] = {"date": payload.get("date") or ts[:10],
-                                 "amount": int(payload.get("amount") or 0),
-                                 "file_id": payload.get("file_id"), "at": ts, "by": actor}
-        setter["status"] = "disbursing"
+        amount = int(payload.get("amount") or 0)
+        if amount <= 0:
+            raise ValueError("Nominal pencairan bank wajib diisi — dana ini melunasi piutang "
+                             "pembeli dan harus tercatat di kuitansi & buku besar.")
+        # CACAT yang ditutup: dulu pencairan hanya menulis catatan di pengajuan KPR — piutang
+        # pembeli tetap 'belum lunas' dan kas di GL tidak bertambah. Kini dana bank diterima
+        # sebagai KUITANSI resmi (metode `kpr_disbursement`) → alokasi termin → jurnal GL.
+        import finance_engine as fe
+        try:
+            rc = await fe.apply_receipt(c["deal_id"], amount, "kpr",
+                                        f"Pencairan KPR {app.get('bank_name') or ''} "
+                                        f"({payload.get('date') or ts[:10]})".strip(),
+                                        actor, org_id=org, allow_overpay=True)
+        except ValueError as e:
+            raise ValueError(f"Pencairan tidak bisa dibukukan: {e}")
+        receipt = rc.get("receipt") or {}
+        setter["disbursement"] = {"date": payload.get("date") or ts[:10], "amount": amount,
+                                 "file_id": payload.get("file_id"), "at": ts, "by": actor,
+                                 "receipt_id": receipt.get("id"),
+                                 "receipt_no": receipt.get("receipt_no"),
+                                 "deposit_excess": int(receipt.get("deposit_amount") or 0)}
+        setter["disbursed_total"] = int(app.get("disbursed_total") or 0) + amount
+        setter["status"] = ("done" if int(app.get("approved_plafon") or 0)
+                            and setter["disbursed_total"] >= int(app["approved_plafon"])
+                            else "disbursing")
+        # Satu daftar pencairan untuk KEDUA jalur (tab KPR kontrak & layar pembiayaan).
+        extra_push["disbursements"] = {"id": new_id(), "amount": amount, "milestone": "akad_kredit",
+                                       "note": payload.get("note"), "receipt_id": receipt.get("id"),
+                                       "created_by": actor, "created_at": ts}
     await db.financing_apps.update_one({"id": app["id"]}, {
         "$set": setter,
         "$push": {"stage_history": {"from": cur, "to": stage, "at": ts, "actor": actor,
                                     "reason": payload.get("note"),
                                     "evidence": [payload.get("file_id")]
-                                    if payload.get("file_id") else []}}})
+                                    if payload.get("file_id") else []}, **extra_push}})
     await add_activity(entity_type="customer", entity_id=c.get("customer_id"), type="system",
                        actor=actor, org_id=org,
                        body=(f"KPR unit {c.get('unit_code')} maju ke tahap "
