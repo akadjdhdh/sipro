@@ -21,6 +21,7 @@ import AttributionPage from "@/pages/AttributionPage";
 import BiPage from "@/pages/BiPage";
 import DealsPage from "@/pages/DealsPage";
 import SitePlanPage from "@/pages/SitePlanPage";
+import SitePlanStudioPage from "@/pages/SitePlanStudioPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import ProjectDetailPage from "@/pages/ProjectDetailPage";
@@ -134,6 +135,7 @@ export default function App() {
             <Route path="/bi" element={<BiPage />} />
             <Route path="/deals" element={<DealsPage />} />
             <Route path="/site-plan" element={<SitePlanPage />} />
+            <Route path="/site-plan/studio/:projectId" element={<SitePlanStudioPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/customers/:id" element={<CustomerProfilePage />} />
             <Route path="/documents" element={<DocumentsPage />} />

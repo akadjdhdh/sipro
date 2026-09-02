@@ -20,7 +20,7 @@ const pick = (r) => ({
 });
 
 /** Dialog ubah satu aturan penomoran — pratinjau hidup dari server (counter tidak naik). */
-export default function NumberingRuleDialog({ rule, canEdit, resetOptions, scopeOptions, onClose, onSaved }) {
+export default function NumberingRuleDialog({ rule, canEdit, resetOptions, scopeOptions, projectId, onClose, onSaved }) {
   const [form, setForm] = useState(pick(rule));
   const [tokens, setTokens] = useState([]);
   const [preview, setPreview] = useState(rule.preview || "");
@@ -37,6 +37,7 @@ export default function NumberingRuleDialog({ rule, canEdit, resetOptions, scope
       try {
         const res = await api.post(`/numbering/${rule.key}/preview`, {
           ...form, width: Number(form.width) || undefined, start: Number(form.start) || undefined,
+          project_id: projectId || undefined,
         });
         setPreview(res.data.data.preview); setPreviewError("");
       } catch (e) {
@@ -44,7 +45,7 @@ export default function NumberingRuleDialog({ rule, canEdit, resetOptions, scope
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [form, rule.key]);
+  }, [form, rule.key, projectId]);
 
   const insertToken = (tok) => {
     const el = patternRef.current;
@@ -147,7 +148,7 @@ export default function NumberingRuleDialog({ rule, canEdit, resetOptions, scope
             </Select>
           </div>
           <div className="rounded-md border bg-muted/40 p-3">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pratinjau nomor berikutnya</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pratinjau nomor berikutnya{projectId ? " (proyek terpilih)" : ""}</div>
             {previewError ? (
               <div data-testid={NUMBERING.previewError} className="text-sm text-destructive">{previewError}</div>
             ) : (

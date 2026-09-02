@@ -279,3 +279,20 @@ Sesi sebelumnya terputus di tengah penutupan temuan uji iterasi 102. Yang dilaku
 2. Form master di UI: kolom kode boleh dikosongkan + placeholder "otomatis dari aturan" (ProjectForm, ClusterForm, VendorForm, dll.).
 3. `scripts/verify_p71.py` gate + `run_all_gates.sh`; `engine.py` 818>800 (baseline).
 4. Backlog lama: mutasi gate 53/54/56, ringkasan harian notifikasi.
+
+---
+
+## 3l) Fase 72 — Studio Site Plan + kode master opsional + pratinjau per proyek (SELESAI, iteration_122)
+
+| Bagian | Status |
+|---|---|
+| Parser SVG kaya (transform, path→poligon, teks label, deteksi kavling) `site_plan_parse.py` | **SELESAI** |
+| `/api/site-plan-studio/*` (svg, background, shapes CRUD, auto-match, suggest-units, create-units 2 opsi) | **SELESAI** |
+| Halaman `/site-plan/studio/:projectId` — kanvas zoom/pan, tracing poligon, mode berurutan, tab Buat unit | **SELESAI** |
+| Form master: kode opsional + hint; panel Penomoran: pratinjau per proyek | **SELESAI** |
+
+## 10) Tugas berikutnya (sesudah Fase 72)
+1. Studio: edit titik poligon (drag vertex), undo/redo, snap ke grid, duplikasi kavling.
+2. Impor PDF site plan (render halaman → PNG latar) & DXF/DWG.
+3. Warna kanvas studio per status unit + legenda; ekspor peta PNG untuk brosur.
+4. Backlog lama: engine.py 818>800, mutasi gate 53/54/56, ringkasan harian notifikasi.

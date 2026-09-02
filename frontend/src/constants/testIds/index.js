@@ -14,6 +14,8 @@
 export * from './offline';
 // Fase 71 — aturan penomoran dokumen & kode master
 export * from './p71';
+// Fase 72 — Studio Site Plan
+export * from './p72';
 // Fase 69 — mesin harga: skema diskon, promo, kupon + reservasi ber-breakdown
 export * from './p69';
 // Fase 69 — mesin harga: skema diskon, promo, kupon + reservasi ber-breakdown

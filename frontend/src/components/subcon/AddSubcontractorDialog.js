@@ -22,7 +22,7 @@ export default function AddSubcontractorDialog({ open, onOpenChange, onDone }) {
   useEffect(() => { if (open) setForm(EMPTY); }, [open]);
 
   const submit = async () => {
-    if (!form.code.trim() || !form.name.trim()) { toast.error("Isi kode & nama."); return; }
+    if (!form.name.trim()) { toast.error("Isi nama subkontraktor."); return; }
     setBusy(true);
     try {
       await api.post("/subcon/subcontractors", {
@@ -44,7 +44,7 @@ export default function AddSubcontractorDialog({ open, onOpenChange, onDone }) {
           <DialogDescription>Data vendor/subkontraktor untuk SPK & pengadaan.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5"><Label htmlFor="addsubcontractordialog-kode">Kode</Label><Input id="addsubcontractordialog-kode" value={form.code} onChange={(e) => set("code", e.target.value)} placeholder="SUB-03" /></div>
+          <div className="space-y-1.5"><Label htmlFor="addsubcontractordialog-kode">Kode</Label><Input id="addsubcontractordialog-kode" data-testid="subcon-form-code" value={form.code} onChange={(e) => set("code", e.target.value)} placeholder="otomatis dari aturan penomoran bila kosong" /></div>
           <div className="space-y-1.5"><Label htmlFor="addsubcontractordialog-nama">Nama</Label><Input id="addsubcontractordialog-nama" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="CV / PT …" /></div>
           <div className="space-y-1.5"><Label>Bidang</Label>
             <ReferenceSelect group="subcon_specialty" value={form.specialty}

@@ -85,6 +85,7 @@ from routers.p62_router import router as p62_router
 # Fase 60 — konfigurasi tampilan dokumen (kop, footer, tanda tangan, baris biaya)
 from routers.doc_layout_router import router as doc_layout_router
 from routers.numbering_router import router as numbering_router
+from routers.site_plan_studio_router import router as site_plan_studio_router
 from routers.omnichannel_router import router as omnichannel_router
 from routers.broadcasts_router import router as broadcasts_router
 from routers.orgs_router import router as orgs_router
@@ -421,6 +422,8 @@ api.include_router(p62_router)
 api.include_router(doc_layout_router)
 # Fase 71 — aturan penomoran dokumen & kode master yang bisa dikonfigurasi.
 api.include_router(numbering_router)
+# Fase 72 — Studio Site Plan (SVG kaya, latar gambar, tracing, unit dari peta).
+api.include_router(site_plan_studio_router)
 # Manajemen Data — migrasi master via Excel + backup/restore JSON (admin/owner).
 api.include_router(data_mgmt_router)
 app.include_router(api)

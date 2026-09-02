@@ -6,6 +6,7 @@ export const NUMBERING = {
   search: "numbering-search",
   row: "numbering-row",
   groupFilter: "numbering-group-filter",
+  projectFilter: "numbering-project-filter",
   edit: "numbering-edit-btn",
   overriddenBadge: "numbering-overridden-badge",
   dialog: "numbering-dialog",

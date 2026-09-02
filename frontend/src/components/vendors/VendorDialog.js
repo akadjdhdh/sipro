@@ -33,10 +33,6 @@ export default function VendorDialog({ open, mode = "create", vendor, onOpenChan
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
-    if (!edit && form.code.trim().length < 2) {
-      toast.error("Kode vendor minimal 2 huruf — dipakai agar nama tidak ditulis berbeda-beda.");
-      return;
-    }
     if (form.name.trim().length < 3) { toast.error("Nama vendor minimal 3 huruf."); return; }
     setBusy(true);
     try {
@@ -71,7 +67,7 @@ export default function VendorDialog({ open, mode = "create", vendor, onOpenChan
           <div className="space-y-1.5">
             <Label htmlFor="vendor-code">Kode</Label>
             <Input id="vendor-code" data-testid={T.code} value={form.code} disabled={edit}
-              onChange={(e) => set("code", e.target.value)} placeholder="mis. VND-04" />
+              onChange={(e) => set("code", e.target.value)} placeholder="otomatis dari aturan penomoran bila kosong" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="vendor-name">Nama vendor</Label>

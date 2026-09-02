@@ -132,7 +132,7 @@ export default function UnitTypePanel() {
                 <div className="space-y-1.5">
                   <Label htmlFor="ut-code">Kode</Label>
                   <Input id="ut-code" data-testid={CONFIG.typeFormCode} value={form.code}
-                    disabled={!!form.id} placeholder="T30-60"
+                    disabled={!!form.id} placeholder="otomatis dari aturan penomoran bila kosong"
                     onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
                 </div>
                 <div className="space-y-1.5">
@@ -189,7 +189,7 @@ export default function UnitTypePanel() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setForm(null)}>Batal</Button>
             <Button data-testid={CONFIG.typeSubmit} onClick={submit}
-              disabled={!form?.code || !form?.name}>Simpan</Button>
+              disabled={!form?.name}>Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

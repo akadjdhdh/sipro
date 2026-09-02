@@ -13,6 +13,24 @@ Bahasa produk & komunikasi: **Indonesia**.
 - Kredensial uji: `/app/memory/test_credentials.md` (sandi demo `Sipro#2026`).
 
 ## Riwayat implementasi (terbaru di atas)
+### 2 Sep 2026 — Fase 72: Studio Site Plan (killer feature) + kode master opsional + pratinjau penomoran per proyek — SELESAI (iteration_122)
+- **Studio Site Plan halaman penuh** `/site-plan/studio/:projectId` (menggantikan popup MappingStudio):
+  toolbar (Pilih / Gambar kavling / Berurutan, unggah SVG, gambar latar PNG/JPG + opasitas,
+  cocokkan otomatis, peta contoh / hapus peta), kanvas zoom-pan (`StudioCanvas`), sidebar tab
+  Bentuk / Unit belum punya bentuk / Buat unit.
+- **Parser SVG kaya** `site_plan_parse.py`: `<g transform>` bersarang, `<path d>` → poligon,
+  `<text>` di dalam bentuk = label kavling, deteksi kavling berbasis luas, batas lahan otomatis.
+  `parse_code` membaca "A-01", "B12", "Q9 3", "A1-05" → (blok, no).
+- **Backend** `site_plan_studio.py` + `routers/site_plan_studio_router.py` (`/api/site-plan-studio/*`):
+  studio payload, svg, background (object storage, PIL dims), shapes CRUD (tracing manual),
+  auto-match toleran (tanda pisah/nol depan), suggest-units, **create-units** (per baris; blok baru
+  hanya bila `create_blocks`; kode yang sudah ada → dipetakan, bukan digandakan).
+- Form master (proyek, cluster, blok, tipe unit, vendor, subkon) boleh kosongkan kode → hint
+  "otomatis dari aturan penomoran bila kosong". Panel Penomoran: pemilih proyek → pratinjau &
+  urut berikutnya dari counter proyek itu (`preview_in_context`).
+- Uji: `tests/test_p72_studio.py` (4) + `test_p72_ui_backend.py` (5, testing agent) + p71 (6) lulus;
+  UI iteration_122 lulus (1 bug validasi kode proyek diperbaiki setelahnya).
+
 ### 2 Sep 2026 — Fase 71: Penomoran terkonfigurasi (pola + token) + kode master otomatis — SELESAI (iteration_121)
 - Repo di-clone ulang dari `akskdidj/sipro`; `backend/.env` dipulihkan (JWT_SECRET, DEFAULT_ORG_ID,
   PORTAL_MASTER_OTP, BACKUP_DIR), deps terpasang, `memory/test_credentials.md` diisi ulang.

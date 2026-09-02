@@ -238,7 +238,8 @@ async def upload_svg(project_id: str, payload: SvgUpload,
     if not await db.projects.count_documents({"id": project_id, "org_id": org}):
         raise HTTPException(404, "Proyek tidak ditemukan.")
     try:
-        parsed = svgplan.parse_svg(payload.svg)
+        from site_plan_parse import parse_svg_rich
+        parsed = parse_svg_rich(payload.svg)
     except ValueError as e:
         raise HTTPException(400, str(e))
     units = await _units_of(project_id, org)

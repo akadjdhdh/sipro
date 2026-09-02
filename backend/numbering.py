@@ -81,17 +81,34 @@ async def effective_rule(org: str, key: str) -> dict:
     return rule
 
 
-async def list_rules(org: str) -> list:
+async def list_rules(org: str, context: dict = None) -> list:
     out = []
     for r in REGISTRY:
         rule = await effective_rule(org, r["key"])
         rule["default"] = {k: r.get(k) for k in ("pattern", "prefix", "width", "reset", "seq_scope")}
         rule["default"]["start"] = 1
         rule["group_label"] = GROUP_LABELS.get(r["group"], r["group"])
-        rule["next_seq"] = await seq.peek(r["key"], org, _period(rule["reset"], _now())) + 1
-        rule["preview"] = await preview(org, rule)
+        rule["preview"], rule["next_seq"] = await preview_in_context(org, rule, context)
         out.append(rule)
     return out
+
+
+async def preview_in_context(org: str, rule: dict, context: dict = None):
+    """Contoh nomor + urut berikutnya memakai counter BER-SCOPE dari konteks nyata
+    (proyek yang dipilih); token yang tidak tersedia diisi nilai contoh."""
+    dt = _now()
+    needed = set(tokens_in(rule["pattern"]))
+    tokens = await resolve_context(org, context or {}, needed) if context else {}
+    samples = {t: ex for t, (_, ex) in CONTEXT_TOKENS.items()}
+    for k, v in tokens.items():
+        if v:
+            samples[k] = v
+    samples["ORG_INITIALS"] = initials((await _doc("orgs", org)).get("name") or org)
+    samples["PREFIX"] = rule.get("prefix") or ""
+    cscope = _counter_scope(rule["key"], rule, tokens, context) if context else rule["key"]
+    n = await seq.peek(cscope, org, _period(rule["reset"], dt)) + 1
+    n = max(n, int(rule.get("start") or 1))
+    return render(rule["pattern"], samples, n, int(rule["width"]), dt), n
 
 
 async def save_rule(org: str, key: str, patch: dict, actor: str) -> dict:

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Map as MapIcon, RefreshCw, Search, Maximize2, Minimize2, MapPinned, EyeOff, Eye, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,6 @@ import ShareShowroomDialog from "@/components/siteplan/ShareShowroomDialog";
 import SvgPlanMap from "@/components/siteplan/SvgPlanMap";
 import UnitQuickCard from "@/components/siteplan/UnitQuickCard";
 import UnitDetailDrawer from "@/components/siteplan/UnitDetailDrawer";
-import MappingStudio from "@/components/siteplan/MappingStudio";
 import { makeScales, unitKey } from "@/components/siteplan/planStyles";
 import { useAuth } from "@/context/AuthContext";
 import { formatIDR } from "@/utils/formatters";
@@ -36,6 +36,7 @@ import { SITE_PLAN } from "@/constants/testIds";
  */
 export default function SitePlanPage() {
   const { can } = useAuth();
+  const navigate = useNavigate();
   // Izin dari izin EFEKTIF (`GET /auth/me`), bukan daftar peran yang ditulis ulang di
   // layar: matriks RBAC bisa diubah admin lewat Pusat Konfigurasi, jadi daftar hardcode
   // membuat tombol berbeda dengan jawaban server (tombol mati 403, atau tombol hilang
@@ -61,7 +62,6 @@ export default function SitePlanPage() {
   const [hover, setHover] = useState(null);
   const [pick, setPick] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [studio, setStudio] = useState(false);
   const [share, setShare] = useState(false);
   const [showroom, setShowroom] = useState(false);
   const [privacy, setPrivacy] = useState(false);
@@ -184,7 +184,7 @@ export default function SitePlanPage() {
           ) : null}
           {canSetup ? (
             <Button variant="outline" data-testid={SITE_PLAN.studioBtn}
-              onClick={() => setStudio(true)}>
+              onClick={() => navigate(`/site-plan/studio/${projectId}`)}>
               <MapPinned className="mr-1.5 h-4 w-4" /> Studio Peta
             </Button>
           ) : null}
@@ -240,7 +240,9 @@ export default function SitePlanPage() {
 
       {!units.length ? (
         <EmptyState icon={MapIcon} title="Belum ada kavling di proyek ini"
-          description="Tambahkan unit pada proyek terlebih dahulu, lalu siapkan petanya di Studio Peta." />
+          description="Buka Studio Peta: unggah SVG/gambar site plan dan lahirkan unit langsung dari kavling di peta."
+          actionLabel={canSetup ? "Buka Studio Peta" : undefined}
+          onAction={() => navigate(`/site-plan/studio/${projectId}`)} />
       ) : (
         <div ref={mapWrap} className="relative">
           {svgPlan ? (
@@ -303,9 +305,6 @@ export default function SitePlanPage() {
         <UnitDetailDrawer projectId={projectId} unit={detail} canSeePrivate={!privacy}
           onClose={() => setDetail(null)} />
       ) : null}
-
-      <MappingStudio open={studio} onOpenChange={setStudio} projectId={projectId}
-        plan={svgPlan} units={units} onChanged={loadPlan} />
 
       <ShareShowroomDialog open={share} onOpenChange={setShare} projectId={projectId}
         projectName={projects.find((p) => p.id === projectId)?.name} />

@@ -282,7 +282,7 @@ function AddProjectDialog({ open, onOpenChange, onDone }) {
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const submit = async () => {
-    if (!form.name || !form.code) { toast.error("Nama & kode wajib diisi."); return; }
+    if (!form.name) { toast.error("Nama proyek wajib diisi."); return; }
     setBusy(true);
     try {
       await api.post("/projects", form);
@@ -301,7 +301,7 @@ function AddProjectDialog({ open, onOpenChange, onDone }) {
           <div className="space-y-1.5"><Label htmlFor="pn">Nama Proyek</Label>
             <Input id="pn" value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
           <div className="space-y-1.5"><Label htmlFor="pc">Kode</Label>
-            <Input id="pc" value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} placeholder="mis. CBB" /></div>
+            <Input id="pc" value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} placeholder="otomatis dari aturan penomoran bila kosong" /></div>
           <div className="space-y-1.5"><Label htmlFor="pl">Lokasi</Label>
             <Input id="pl" value={form.location} onChange={(e) => set("location", e.target.value)} /></div>
         </div>

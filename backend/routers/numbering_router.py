@@ -30,6 +30,7 @@ class RuleSave(BaseModel):
 
 class PreviewIn(RuleSave):
     sample: dict = {}
+    project_id: Optional[str] = None
 
 
 def _org(user: dict) -> str:
@@ -43,8 +44,11 @@ def _key(key: str) -> str:
 
 
 @router.get("")
-async def list_rules(user: dict = Depends(require_permission("settings", "view"))):
-    return {"data": serialize_doc(await nb.list_rules(_org(user))),
+async def list_rules(project_id: str = None,
+                     user: dict = Depends(require_permission("settings", "view"))):
+    """`project_id` opsional: contoh & urut berikutnya dihitung dari counter proyek itu."""
+    ctx = {"project_id": project_id} if project_id else None
+    return {"data": serialize_doc(await nb.list_rules(_org(user), ctx)),
             "groups": [{"key": k, "label": v} for k, v in GROUP_LABELS.items()],
             "reset_options": [{"value": k, "label": v} for k, v in RESET_OPTIONS.items()],
             "seq_scope_options": [{"value": k, "label": v} for k, v in SEQ_SCOPE_OPTIONS.items()],
@@ -67,10 +71,14 @@ async def preview(key: str, payload: PreviewIn,
     rule = await nb.effective_rule(org, key)
     patch = payload.model_dump(exclude_none=True)
     sample = patch.pop("sample", {})
+    project_id = patch.pop("project_id", None)
     rule.update({k: v for k, v in patch.items() if k in nb.EDITABLE})
     errs = nb.validate_pattern(rule["pattern"], base["tokens"])
     if errs:
         raise HTTPException(status_code=400, detail=" ".join(errs))
+    if project_id:
+        pv, n = await nb.preview_in_context(org, rule, {"project_id": project_id})
+        return {"data": {"preview": pv, "next_seq": n, "errors": []}}
     return {"data": {"preview": await nb.preview(org, rule, sample), "errors": []}}
 
 

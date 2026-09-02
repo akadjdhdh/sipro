@@ -305,7 +305,7 @@ export default function StructureTab({ tree, projectId, onChanged, canManage }) 
                 <div className="space-y-1.5">
                   <Label htmlFor="cl-code">Kode cluster</Label>
                   <Input id="cl-code" data-testid={MASTERPLAN.clusterFormCode}
-                    value={clusterForm.code} disabled={!!clusterForm.id} placeholder="HL5"
+                    value={clusterForm.code} disabled={!!clusterForm.id} placeholder="otomatis dari aturan penomoran bila kosong"
                     onChange={(e) => setClusterForm({ ...clusterForm,
                       code: e.target.value.toUpperCase() })} />
                 </div>
@@ -343,7 +343,7 @@ export default function StructureTab({ tree, projectId, onChanged, canManage }) 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setClusterForm(null)}>Batal</Button>
             <Button data-testid={MASTERPLAN.clusterSubmit} onClick={saveCluster}
-              disabled={!clusterForm?.code || !clusterForm?.name}>Simpan</Button>
+              disabled={!clusterForm?.name}>Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -360,7 +360,7 @@ export default function StructureTab({ tree, projectId, onChanged, canManage }) 
               <div className="space-y-1.5">
                 <Label htmlFor="bl-code">Kode blok</Label>
                 <Input id="bl-code" data-testid={MASTERPLAN.blockFormCode} value={blockForm.code}
-                  placeholder="D"
+                  placeholder="otomatis dari aturan penomoran bila kosong (mis. D)"
                   onChange={(e) => setBlockForm({ ...blockForm,
                     code: e.target.value.toUpperCase() })} />
               </div>
@@ -375,7 +375,7 @@ export default function StructureTab({ tree, projectId, onChanged, canManage }) 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setBlockForm(null)}>Batal</Button>
             <Button data-testid={MASTERPLAN.blockSubmit} onClick={saveBlock}
-              disabled={!blockForm?.code}>Simpan</Button>
+              >Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -26,11 +26,13 @@ export default function NumberingPanel() {
   const [group, setGroup] = useState("all");
   const [query, setQuery] = useState({ q: "", sort: "group_label", direction: "asc", skip: 0, limit: 100 });
   const [editing, setEditing] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [projectId, setProjectId] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const res = await api.get("/numbering");
+      const res = await api.get("/numbering", { params: projectId ? { project_id: projectId } : {} });
       setMeta({
         rows: res.data.data || [], groups: res.data.groups || [],
         resetOptions: res.data.reset_options || [], scopeOptions: res.data.seq_scope_options || [],
@@ -38,9 +40,12 @@ export default function NumberingPanel() {
     } catch (e) {
       setError(e?.response?.data?.detail || "Gagal memuat aturan penomoran.");
     } finally { setLoading(false); }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    api.get("/projects").then((r) => setProjects(r.data.data || [])).catch(() => {});
+  }, []);
 
   const rows = useMemo(() => {
     const q = (query.q || "").toLowerCase();
@@ -65,7 +70,7 @@ export default function NumberingPanel() {
         </div>
       ) },
     { key: "pattern", header: "Pola", render: (r) => <code className="text-xs">{r.pattern}</code> },
-    { key: "preview", header: "Contoh nomor berikutnya (urutan dasar)",
+    { key: "preview", header: projectId ? "Nomor berikutnya (proyek terpilih)" : "Contoh nomor berikutnya (urutan dasar)",
       render: (r) => <span className="font-mono text-xs font-semibold">{r.preview}</span> },
     { key: "reset", header: "Reset", render: (r) => resetLabel(r.reset) },
     { key: "next_seq", header: "Urut berikutnya", align: "right" },
@@ -89,6 +94,16 @@ export default function NumberingPanel() {
           memakai urutan dasar organisasi & nilai token contoh). Nomor yang sudah terbit tidak
           pernah berubah.
         </p>
+        <div className="flex flex-wrap gap-2">
+        <Select value={projectId || "__none"} onValueChange={(v) => setProjectId(v === "__none" ? "" : v)}>
+          <SelectTrigger data-testid={NUMBERING.projectFilter} className="w-60" aria-label="Proyek contoh">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">Contoh umum (nilai token contoh)</SelectItem>
+            {projects.map((p) => <SelectItem key={p.id} value={p.id}>Pratinjau proyek: {p.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={group} onValueChange={setGroup}>
           <SelectTrigger data-testid={NUMBERING.groupFilter} className="w-56" aria-label="Kelompok aturan">
             <SelectValue />
@@ -98,6 +113,7 @@ export default function NumberingPanel() {
             {meta.groups.map((g) => <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        </div>
       </div>
       <DataTable
         testId={NUMBERING.table}
@@ -109,7 +125,7 @@ export default function NumberingPanel() {
         searchPlaceholder="Cari jenis nomor, pola, atau contoh…" exportName="aturan-penomoran"
         emptyTitle="Tidak ada aturan yang cocok" />
       {editing ? (
-        <NumberingRuleDialog rule={editing} canEdit={canEdit}
+        <NumberingRuleDialog rule={editing} canEdit={canEdit} projectId={projectId}
           resetOptions={meta.resetOptions} scopeOptions={meta.scopeOptions}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       ) : null}
