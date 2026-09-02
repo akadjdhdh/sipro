@@ -296,3 +296,20 @@ Sesi sebelumnya terputus di tengah penutupan temuan uji iterasi 102. Yang dilaku
 2. Impor PDF site plan (render halaman → PNG latar) & DXF/DWG.
 3. Warna kanvas studio per status unit + legenda; ekspor peta PNG untuk brosur.
 4. Backlog lama: engine.py 818>800, mutasi gate 53/54/56, ringkasan harian notifikasi.
+
+---
+
+## 3m) Fase 73 — Studio: edit titik, undo, PDF latar, warna status, ekspor PNG (SELESAI, iteration_123)
+
+| Bagian | Status |
+|---|---|
+| Seret titik sudut kavling + Undo/Ctrl+Z (titik, tambah, hapus) | **SELESAI** |
+| PDF → PNG latar (PyMuPDF, pilih halaman) | **SELESAI** |
+| Mode warna status unit + legenda berhitung | **SELESAI** |
+| Ekspor PNG 2400px untuk brosur/WA | **SELESAI** |
+
+## 10) Tugas berikutnya (sesudah Fase 73)
+1. Toolbar studio: kelompokkan kontrol latar (PDF/opasitas) ke popover; simpan colorMode di localStorage.
+2. Peta publik/brosur interaktif: tautan berbagi peta status ke calon pembeli (read-only).
+3. Impor DXF/DWG; snap-to-grid & duplikasi kavling.
+4. Backlog lama: engine.py 818>800, mutasi gate 53/54/56.

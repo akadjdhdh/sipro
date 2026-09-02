@@ -7,7 +7,7 @@ Semua tulisan memerlukan `projects:update`; membaca `projects:view`.
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 import site_plan_studio as st
@@ -103,14 +103,16 @@ async def upload_svg(project_id: str, payload: SvgIn,
 
 
 @router.post("/{project_id}/background")
-async def upload_background(project_id: str, file: UploadFile = File(...),
+async def upload_background(project_id: str, file: UploadFile = File(...), page: int = Form(1),
                             user: dict = Depends(require_permission("projects", "update"))):
+    """PNG/JPG langsung; PDF dirender halaman `page` (default 1) menjadi PNG latar."""
     org = _org(user)
     await _project(project_id, org)
     data = await file.read()
     try:
         plan = await st.set_background(project_id, org, data, file.filename or "siteplan.png",
-                                       file.content_type or "image/png", user.get("email"))
+                                       file.content_type or "image/png", user.get("email"),
+                                       page=max(1, page))
     except ValueError as e:
         raise HTTPException(400, str(e))
     await audit_log(user, "update", "site_plans", plan["id"], {"background": file.filename})

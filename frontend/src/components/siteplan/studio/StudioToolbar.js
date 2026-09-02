@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { FileUp, ImagePlus, ImageOff, ListOrdered, MousePointer2, PenTool, Sparkles, Trash2, Wand2 } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Download, FileUp, ImagePlus, ImageOff, ListOrdered, MousePointer2, Palette, PenTool, Sparkles, Trash2, Undo2, Wand2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { STUDIO } from "@/constants/testIds";
@@ -14,12 +14,15 @@ const TOOLS = [
 export default function StudioToolbar({ s, bgOpacity, setBgOpacity }) {
   const svgRef = useRef(null);
   const imgRef = useRef(null);
+  const [pdfPage, setPdfPage] = useState(1);
+  const bg = s.plan?.background;
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-[var(--shadow-card)]">
       <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
         {TOOLS.map(([key, Icon, label, hint]) => (
           <Button key={key} size="sm" variant={s.tool === key ? "default" : "ghost"} title={hint}
             data-testid={STUDIO[`tool${key[0].toUpperCase()}${key.slice(1)}`]} aria-pressed={s.tool === key}
+            disabled={key === "sequence" && !s.plan}
             onClick={() => s.setTool(key)} className="h-8">
             <Icon className="mr-1.5 h-3.5 w-3.5" /> {label}
           </Button>
@@ -28,14 +31,20 @@ export default function StudioToolbar({ s, bgOpacity, setBgOpacity }) {
       <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
       <input ref={svgRef} data-testid={STUDIO.uploadSvg} type="file" accept=".svg,image/svg+xml" className="hidden"
         aria-label="Unggah SVG site plan" onChange={(e) => { const f = e.target.files?.[0]; if (f) s.uploadSvg(f); e.target.value = ""; }} />
-      <input ref={imgRef} data-testid={STUDIO.uploadImage} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
-        aria-label="Unggah gambar latar" onChange={(e) => { const f = e.target.files?.[0]; if (f) s.uploadImage(f); e.target.value = ""; }} />
+      <input ref={imgRef} data-testid={STUDIO.uploadImage} type="file" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf" className="hidden"
+        aria-label="Unggah gambar/PDF latar" onChange={(e) => { const f = e.target.files?.[0]; if (f) s.uploadImage(f, pdfPage); e.target.value = ""; }} />
       <Button size="sm" variant="outline" disabled={!!s.busy} onClick={() => svgRef.current?.click()}>
         <FileUp className="mr-1.5 h-3.5 w-3.5" /> {s.busy === "svg" ? "Membaca SVG…" : "Unggah SVG"}
       </Button>
       <Button size="sm" variant="outline" disabled={!!s.busy} onClick={() => imgRef.current?.click()}>
-        <ImagePlus className="mr-1.5 h-3.5 w-3.5" /> {s.busy === "image" ? "Mengunggah…" : "Gambar latar (PNG/JPG)"}
+        <ImagePlus className="mr-1.5 h-3.5 w-3.5" /> {s.busy === "image" ? "Merender…" : "Latar (PNG/JPG/PDF)"}
       </Button>
+      <label className="flex items-center gap-1 text-[11px] text-muted-foreground" title="Halaman PDF yang dirender sebagai latar">
+        hal. PDF
+        <input data-testid={STUDIO.pdfPage} type="number" min={1} max={bg?.pdf_pages || 99} value={pdfPage}
+          onChange={(e) => setPdfPage(Math.max(1, Number(e.target.value) || 1))} className="h-7 w-12 rounded border bg-background px-1 text-xs" aria-label="Halaman PDF" />
+        {bg?.source === "pdf" ? <span className="rounded bg-muted px-1">{bg.pdf_page}/{bg.pdf_pages}</span> : null}
+      </label>
       {s.plan?.background ? (
         <div className="flex items-center gap-2 rounded-md border px-2 py-1">
           <label htmlFor="bg-opacity" className="text-[11px] text-muted-foreground">Latar</label>
@@ -46,6 +55,19 @@ export default function StudioToolbar({ s, bgOpacity, setBgOpacity }) {
         </div>
       ) : null}
       <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
+      <Button size="sm" variant="outline" data-testid={STUDIO.undo} disabled={!s.canUndo || !!s.busy} onClick={s.undo}
+        title="Batalkan langkah terakhir pada bentuk (Ctrl+Z)">
+        <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Undo
+      </Button>
+      <Button size="sm" variant={s.colorMode === "status" ? "default" : "outline"} data-testid={STUDIO.colorMode}
+        aria-pressed={s.colorMode === "status"} title="Warnai kavling menurut status penjualan unit"
+        onClick={() => s.setColorMode(s.colorMode === "status" ? "mapping" : "status")}>
+        <Palette className="mr-1.5 h-3.5 w-3.5" /> {s.colorMode === "status" ? "Warna: status unit" : "Warna: pemetaan"}
+      </Button>
+      <Button size="sm" variant="outline" data-testid={STUDIO.exportPng} disabled={!s.plan || !!s.busy} onClick={s.exportPng}
+        title="Unduh PNG peta (dengan warna aktif) untuk brosur / WhatsApp">
+        <Download className="mr-1.5 h-3.5 w-3.5" /> {s.busy === "export" ? "Merender…" : "Ekspor PNG"}
+      </Button>
       <Button size="sm" variant="outline" data-testid={STUDIO.autoMatch} disabled={!s.plan || !!s.busy} onClick={s.autoMatch}
         title="Cocokkan label kavling di peta dengan kode unit (toleran tanda pisah & nol depan)">
         <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Cocokkan otomatis

@@ -44,4 +44,11 @@ export const STUDIO = {
   createSubmit: "studio-create-submit",
   createResult: "studio-create-result",
   emptyHint: "studio-empty-hint",
+  colorMode: "studio-color-mode",
+  legend: "studio-legend",
+  legendItem: "studio-legend-item",
+  exportPng: "studio-export-png",
+  undo: "studio-undo",
+  vertex: "studio-vertex",
+  pdfPage: "studio-pdf-page",
 };

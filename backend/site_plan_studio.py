@@ -54,25 +54,54 @@ async def studio_payload(project_id: str, org: str) -> dict:
         if bg and bg.get("file_id"):
             plan["background"] = {**bg, "url": f"/api/files/{bg['file_id']}"}
     return {"plan": plan, "units": units, "blocks": blocks, "clusters": clusters,
-            "unit_types": types}
+            "unit_types": types,
+            "project_name": ((await db.projects.find_one({"id": project_id, "org_id": org},
+                                                         {"_id": 0, "name": 1})) or {}).get("name")}
 
 
 # ------------------------------------------------------------------ latar gambar
+def pdf_to_png(data: bytes, page: int = 1, max_dim: int = 3000) -> bytes:
+    """Render satu halaman PDF site plan arsitek menjadi PNG (PyMuPDF), sisi terpanjang ≤ max_dim."""
+    import pymupdf
+    try:
+        doc = pymupdf.open(stream=data, filetype="pdf")
+    except Exception:
+        raise ValueError("Berkas PDF tidak bisa dibuka.")
+    if doc.page_count < 1:
+        raise ValueError("PDF tidak memuat halaman.")
+    page = max(1, min(page, doc.page_count))
+    pg = doc[page - 1]
+    rect = pg.rect
+    zoom = min(max_dim / max(rect.width, rect.height, 1), 6.0)
+    pix = pg.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+    return pix.tobytes("png"), doc.page_count, page
+
+
 async def set_background(project_id: str, org: str, data: bytes, filename: str,
-                         content_type: str, actor: str) -> dict:
+                         content_type: str, actor: str, page: int = 1) -> dict:
+    is_pdf = (content_type or "").lower() == "application/pdf" or \
+        (filename or "").lower().endswith(".pdf") or data[:5] == b"%PDF-"
+    pages = None
+    if is_pdf:
+        data, pages, page = pdf_to_png(data, page)
+        filename = re.sub(r"\.pdf$", "", filename or "siteplan", flags=re.I) + f"-hal{page}.png"
+        content_type = "image/png"
     try:
         from PIL import Image
         im = Image.open(io.BytesIO(data))
         w, h = im.size
     except Exception:
-        raise ValueError("Berkas bukan gambar PNG/JPG yang bisa dibaca.")
+        raise ValueError("Berkas bukan gambar PNG/JPG/PDF yang bisa dibaca.")
     rec = await storage.save_file(data=data, filename=filename, content_type=content_type,
                                   org_id=org, owner_type="site_plan", owner_id=project_id,
                                   uploaded_by=actor, doc_type="site_plan_background",
                                   tag="siteplan", optimize=False)
     plan = await get_plan(project_id, org)
     fields = {"background": {"file_id": rec["id"], "width": w, "height": h,
-                             "filename": filename, "opacity": 1.0}}
+                             "filename": filename, "opacity": 1.0,
+                             "source": "pdf" if is_pdf else "image",
+                             "pdf_page": page if is_pdf else None,
+                             "pdf_pages": pages}}
     if not plan or not plan.get("shapes"):
         fields["view_box"] = f"0 0 {w} {h}"
         fields["source"] = "manual"
@@ -134,7 +163,8 @@ async def update_shape(project_id: str, org: str, sid: str, patch: dict, actor: 
         raise LookupError("Bentuk tidak ditemukan.")
     if patch.get("points"):
         pts = [(float(p[0]), float(p[1])) for p in patch["points"]]
-        s.update(_shape_from_points(pts, s["kind"], s.get("label"), sid=sid) | {"unit_id": s.get("unit_id")})
+        s.update(_shape_from_points(pts, s["kind"], s.get("label"), sid=sid)
+                 | {"unit_id": s.get("unit_id"), "manual": bool(s.get("manual"))})
     if patch.get("kind") in KINDS:
         s["kind"] = patch["kind"]
         if s["kind"] != "lot":

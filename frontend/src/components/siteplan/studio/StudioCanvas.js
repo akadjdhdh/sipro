@@ -1,25 +1,29 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KIND_STYLE } from "@/components/siteplan/planStyles";
+import { lotStyle } from "@/components/siteplan/studio/exportPng";
+import StudioLegend from "@/components/siteplan/studio/StudioLegend";
 import { photoSrc } from "@/utils/photoSrc";
 import { STUDIO } from "@/constants/testIds";
 
 const ORDER = { boundary: 0, green: 1, water: 2, road: 3, facility: 4, lot: 5 };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const LOT = {
-  mapped: { fill: "#bbf7d0", stroke: "#15803d" },
-  unmapped: { fill: "#fff7ed", stroke: "#f59e0b" },
-};
+const parsePts = (g) => String(g?.points || "").trim().split(/\s+/).filter(Boolean)
+  .map((p) => p.split(",").map(Number));
 
 /**
  * Kanvas Studio — SVG dengan zoom/pan, gambar latar (tracing), klik bentuk, dan mode
  * gambar poligon (klik titik demi titik, klik ganda / tombol Selesai untuk menutup).
  */
-export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShapeClick, onDrawDone, bgOpacity = 1 }) {
+export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShapeClick, onDrawDone, onVertexMove, bgOpacity = 1, colorMode = "mapping" }) {
   const wrapRef = useRef(null);
   const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
   const [draft, setDraft] = useState([]);
   const [cursor, setCursor] = useState(null);
   const drag = useRef(null);
+  const vtx = useRef(null);
+  const [editPts, setEditPts] = useState(null);
+
+  useEffect(() => { setEditPts(null); }, [selectedId, plan?.updated_at]);
 
   const [vx, vy, vw, vh] = useMemo(() => {
     const p = String(plan?.view_box || "0 0 1600 1000").split(/[\s,]+/).map(Number);
@@ -77,12 +81,17 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
   }, [tool, finishDraw]);
 
   const onPointerDown = (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || vtx.current) return;
     const r = wrapRef.current.getBoundingClientRect();
     drag.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty, w: r.width, h: r.height, moved: false };
   };
   const onPointerMove = (e) => {
     if (tool === "draw") setCursor(toPlan(e.clientX, e.clientY));
+    if (vtx.current) {
+      const [x, y] = toPlan(e.clientX, e.clientY);
+      setEditPts((pts) => pts.map((p, i) => (i === vtx.current.index ? [x, y] : p)));
+      return;
+    }
     if (!drag.current) return;
     const d = drag.current;
     if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 3) d.moved = true;
@@ -90,6 +99,12 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
     setView((v) => ({ ...v, tx: d.tx + ((e.clientX - d.x) / d.w) * vw, ty: d.ty + ((e.clientY - d.y) / d.h) * vh }));
   };
   const onPointerUp = (e) => {
+    if (vtx.current) {
+      const sid = vtx.current.sid;
+      vtx.current = null;
+      if (editPts && editPts.length >= 3) onVertexMove?.(sid, editPts.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]));
+      return;
+    }
     const d = drag.current;
     drag.current = null;
     if (tool === "draw" && d && !d.moved) {
@@ -123,9 +138,9 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
             {shapes.map((s) => {
               const isLot = s.kind === "lot";
               const u = isLot ? unitsById[s.unit_id] : null;
-              const st = isLot ? (u ? LOT.mapped : LOT.unmapped) : (KIND_STYLE[s.kind] || KIND_STYLE.facility);
+              const st = isLot ? lotStyle(s, u, colorMode) : (KIND_STYLE[s.kind] || KIND_STYLE.facility);
               const active = s.shape_id === selectedId;
-              const g = s.geom || {};
+              const g = active && editPts ? { type: "polygon", points: editPts.map((p) => p.join(",")).join(" ") } : (s.geom || {});
               const props = {
                 fill: st.fill, fillOpacity: bg ? 0.55 : 0.9, stroke: active ? "#2563eb" : st.stroke,
                 strokeWidth: active ? 3 : (isLot ? 1.4 : (st.width || 1)), strokeDasharray: !isLot ? st.dash : (u ? undefined : "5 3"),
@@ -140,13 +155,24 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
                   {s.centroid && (isLot || s.label) && s.kind !== "boundary" ? (
                     <text x={s.centroid.x} y={s.centroid.y + labelSize * 0.35} textAnchor="middle"
                       fontSize={isLot ? labelSize : labelSize * 0.7} fontWeight={isLot ? 700 : 500}
-                      fill={u ? "#14532d" : (isLot ? "#9a3412" : "#475569")} style={{ pointerEvents: "none" }}>
+                      fill={isLot ? st.text : "#475569"} style={{ pointerEvents: "none" }}>
                       {u ? u.code : (s.label || "?")}
                     </text>
                   ) : null}
                 </g>
               );
             })}
+            {tool === "select" && selectedId ? (() => {
+              const sel = shapes.find((x) => x.shape_id === selectedId);
+              if (!sel || sel.geom?.type !== "polygon") return null;
+              const pts = editPts || parsePts(sel.geom);
+              return pts.map((p, i) => (
+                <circle key={i} data-testid={STUDIO.vertex} cx={p[0]} cy={p[1]} r={Math.max(3.5, 7 / view.k)}
+                  fill="#fff" stroke="#2563eb" strokeWidth={2} vectorEffect="non-scaling-stroke"
+                  style={{ cursor: "move" }}
+                  onPointerDown={(e) => { e.stopPropagation(); vtx.current = { sid: selectedId, index: i }; setEditPts(pts); }} />
+              ));
+            })() : null}
             {draft.length ? (
               <g>
                 <polyline points={[...draft, ...(cursor ? [cursor] : [])].map((p) => p.join(",")).join(" ")}
@@ -159,6 +185,12 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
           </g>
         </svg>
 
+        <StudioLegend colorMode={colorMode} shapes={plan?.shapes || []} unitsById={unitsById} />
+        {tool === "select" && selectedId && !editPts ? (
+          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-slate-800/85 px-3 py-1 text-[11px] text-white shadow">
+            Seret titik sudut biru untuk memperbaiki bentuk · Ctrl+Z membatalkan
+          </div>
+        ) : null}
         {tool === "draw" ? (
           <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-blue-600/90 px-3 py-1 text-xs font-medium text-white shadow">
             Mode gambar: klik titik sudut kavling · {draft.length} titik · Enter/klik ganda selesai · Esc batal

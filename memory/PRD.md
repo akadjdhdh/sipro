@@ -13,6 +13,17 @@ Bahasa produk & komunikasi: **Indonesia**.
 - Kredensial uji: `/app/memory/test_credentials.md` (sandi demo `Sipro#2026`).
 
 ## Riwayat implementasi (terbaru di atas)
+### 2 Sep 2026 — Fase 73: Studio — edit titik poligon + undo, PDF → latar, warna status + legenda, ekspor PNG — SELESAI (iteration_123)
+- Kanvas: kavling terpilih menampilkan titik sudut yang bisa diseret (`StudioCanvas` vtx/editPts →
+  `PUT shapes/{sid}` points); flag `manual` dipertahankan saat edit titik.
+- Undo (tombol + Ctrl+Z, 30 langkah) untuk titik, tambah bentuk, hapus bentuk (`useStudio.undoStack`).
+- Latar PDF: `pdf_to_png` (PyMuPDF, halaman dipilih, di-clamp, sisi ≤3000px) → object storage;
+  metadata `background.source/pdf_page/pdf_pages`; input "hal. PDF" di toolbar.
+- Mode warna "status unit" (SALES_COLORS + Serah Terima/Lainnya) + legenda berhitung (`StudioLegend`).
+- Ekspor PNG 2400px (`exportPng.js`: SVG mandiri dengan latar base64 → canvas → unduh) berjudul nama proyek.
+- Uji: `tests/test_p73_studio_pdf.py` (2) + `test_p73_extra.py` (3, testing agent) lulus; UI iteration_123
+  lulus; temuan (status handed_over di legenda, clamp halaman PDF, alat Berurutan saat peta kosong) diperbaiki.
+
 ### 2 Sep 2026 — Fase 72: Studio Site Plan (killer feature) + kode master opsional + pratinjau penomoran per proyek — SELESAI (iteration_122)
 - **Studio Site Plan halaman penuh** `/site-plan/studio/:projectId` (menggantikan popup MappingStudio):
   toolbar (Pilih / Gambar kavling / Berurutan, unggah SVG, gambar latar PNG/JPG + opasitas,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, MapPinned } from "lucide-react";
 
@@ -25,6 +25,16 @@ export default function SitePlanStudioPage() {
   const s = useStudio(projectId);
   const [bgOpacity, setBgOpacity] = useState(0.9);
   const [tab, setTab] = useState("shape");
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !["INPUT", "TEXTAREA"].includes(e.target?.tagName)) {
+        e.preventDefault(); s.undo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [s]);
 
   if (s.loading && !s.data) return <LoadingKpis count={4} />;
   if (s.error) return <ErrorState message={s.error} onRetry={s.load} />;
@@ -57,16 +67,17 @@ export default function SitePlanStudioPage() {
         <div className="min-h-[420px]">
           {s.plan || s.tool === "draw" ? (
             <StudioCanvas plan={s.plan || { view_box: "0 0 1600 1000", shapes: [] }} unitsById={s.unitsById}
-              selectedId={s.selectedId} tool={s.tool} bgOpacity={bgOpacity}
-              onShapeClick={s.clickShape} onDrawDone={(pts) => s.addShape(pts, "lot")} />
+              selectedId={s.selectedId} tool={s.tool} bgOpacity={bgOpacity} colorMode={s.colorMode}
+              onShapeClick={s.clickShape} onDrawDone={(pts) => s.addShape(pts, "lot")}
+              onVertexMove={(sid, pts) => s.patchShape(sid, { points: pts }, { silent: true })} />
           ) : (
             <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 p-8 text-center">
               <MapPinned className="mb-3 h-10 w-10 text-muted-foreground" />
               <h2 className="text-base font-semibold md:text-lg">Mulai dari gambar site plan Anda</h2>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 <strong>Unggah SVG</strong> dari arsitek — kotak kavling dan nomor di dalamnya dibaca otomatis lalu
-                dicocokkan ke unit. Atau pasang <strong>gambar PNG/JPG</strong> dan pilih alat <strong>Gambar kavling</strong>
-                untuk menjiplak poligon di atasnya.
+                dicocokkan ke unit. Atau pasang <strong>gambar PNG/JPG atau PDF</strong> (halaman dirender otomatis) dan pilih
+                alat <strong>Gambar kavling</strong> untuk menjiplak poligon di atasnya.
               </p>
             </div>
           )}
