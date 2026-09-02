@@ -67,7 +67,7 @@ export default function SitePlanStudioPage() {
         <div className="min-h-[420px]">
           {s.plan || s.tool === "draw" ? (
             <StudioCanvas plan={s.plan || { view_box: "0 0 1600 1000", shapes: [] }} unitsById={s.unitsById}
-              selectedId={s.selectedId} tool={s.tool} bgOpacity={bgOpacity} colorMode={s.colorMode}
+              selectedId={s.selectedId} tool={s.tool} bgOpacity={bgOpacity} colorMode={s.colorMode} palette={s.palette}
               onShapeClick={s.clickShape} onDrawDone={(pts) => s.addShape(pts, "lot")}
               onVertexMove={(sid, pts) => s.patchShape(sid, { points: pts }, { silent: true })} />
           ) : (

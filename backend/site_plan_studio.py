@@ -34,7 +34,8 @@ async def save_plan(project_id: str, org: str, actor: str, **fields) -> dict:
 async def units_light(project_id: str, org: str) -> list:
     return await db.units.find({"project_id": project_id, "org_id": org},
                                {"_id": 0, "id": 1, "code": 1, "block": 1, "no": 1, "status": 1,
-                                "type": 1, "unit_type_code": 1, "block_id": 1}).to_list(5000)
+                                "type": 1, "unit_type_code": 1, "block_id": 1,
+                                "construction_progress": 1, "legal_stage": 1}).to_list(5000)
 
 
 async def studio_payload(project_id: str, org: str) -> dict:
@@ -54,9 +55,39 @@ async def studio_payload(project_id: str, org: str) -> dict:
         if bg and bg.get("file_id"):
             plan["background"] = {**bg, "url": f"/api/files/{bg['file_id']}"}
     return {"plan": plan, "units": units, "blocks": blocks, "clusters": clusters,
-            "unit_types": types,
+            "unit_types": types, "palette": await get_palette(org),
             "project_name": ((await db.projects.find_one({"id": project_id, "org_id": org},
                                                          {"_id": 0, "name": 1})) or {}).get("name")}
+
+
+# ------------------------------------------------------------------ palet warna (per organisasi)
+PALETTE_GROUPS = ("sales", "build", "mapping")
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+async def get_palette(org: str) -> dict:
+    doc = await db.site_plan_palettes.find_one({"org_id": org}, {"_id": 0})
+    return (doc or {}).get("palette") or {}
+
+
+async def save_palette(org: str, palette: dict, actor: str) -> dict:
+    """Simpan hanya warna yang valid (#rrggbb) per grup/kunci; kosong = kembali ke bawaan."""
+    clean = {}
+    for group, items in (palette or {}).items():
+        if group not in PALETTE_GROUPS or not isinstance(items, dict):
+            continue
+        for key, col in items.items():
+            if not isinstance(col, dict):
+                continue
+            entry = {k: v for k, v in col.items() if k in ("fill", "stroke", "text") and
+                     isinstance(v, str) and _HEX.match(v)}
+            if isinstance(col.get("label"), str) and col["label"].strip():
+                entry["label"] = col["label"].strip()[:40]
+            if entry:
+                clean.setdefault(group, {})[str(key)[:32]] = entry
+    await db.site_plan_palettes.update_one({"org_id": org}, {"$set": {
+        "org_id": org, "palette": clean, "updated_by": actor, "updated_at": now_iso()}}, upsert=True)
+    return clean
 
 
 # ------------------------------------------------------------------ latar gambar

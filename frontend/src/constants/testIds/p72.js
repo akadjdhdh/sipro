@@ -51,4 +51,11 @@ export const STUDIO = {
   undo: "studio-undo",
   vertex: "studio-vertex",
   pdfPage: "studio-pdf-page",
+  paletteOpen: "studio-palette-open",
+  paletteDialog: "studio-palette-dialog",
+  paletteTab: "studio-palette-tab",
+  paletteRow: "studio-palette-row",
+  paletteColor: "studio-palette-color",
+  paletteReset: "studio-palette-reset",
+  paletteSave: "studio-palette-save",
 };

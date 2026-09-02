@@ -313,3 +313,19 @@ Sesi sebelumnya terputus di tengah penutupan temuan uji iterasi 102. Yang dilaku
 2. Peta publik/brosur interaktif: tautan berbagi peta status ke calon pembeli (read-only).
 3. Impor DXF/DWG; snap-to-grid & duplikasi kavling.
 4. Backlog lama: engine.py 818>800, mutasi gate 53/54/56.
+
+---
+
+## 3n) Fase 74 — Studio: mode warna persisten, palet terkonfigurasi, dua status paralel (SELESAI, iteration_124)
+
+| Bagian | Status |
+|---|---|
+| 4 mode warna (pemetaan / penjualan / pembangunan / gabungan) + legenda 2 kelompok | **SELESAI** |
+| Mode warna diingat (localStorage) | **SELESAI** |
+| Palet per organisasi (`/site-plan-studio/palette`) + dialog Atur warna | **SELESAI** |
+
+## 10) Tugas berikutnya (sesudah Fase 74)
+1. Halaman Site Plan & Showroom (non-studio) memakai palet organisasi yang sama + mode gabungan.
+2. Peta publik/brosur interaktif read-only untuk calon pembeli.
+3. Snap-to-grid & duplikasi kavling; popover kontrol latar.
+4. Backlog lama: engine.py 818>800, mutasi gate 53/54/56.

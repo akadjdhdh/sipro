@@ -2,6 +2,10 @@ import React, { useRef, useState } from "react";
 import { Download, FileUp, ImagePlus, ImageOff, ListOrdered, MousePointer2, Palette, PenTool, Sparkles, Trash2, Undo2, Wand2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PaletteDialog from "@/components/siteplan/studio/PaletteDialog";
+import { COLOR_MODES } from "@/components/siteplan/studio/studioPalette";
+import { useAuth } from "@/context/AuthContext";
 import { STUDIO } from "@/constants/testIds";
 
 const TOOLS = [
@@ -15,6 +19,8 @@ export default function StudioToolbar({ s, bgOpacity, setBgOpacity }) {
   const svgRef = useRef(null);
   const imgRef = useRef(null);
   const [pdfPage, setPdfPage] = useState(1);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const { can } = useAuth();
   const bg = s.plan?.background;
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-[var(--shadow-card)]">
@@ -59,11 +65,25 @@ export default function StudioToolbar({ s, bgOpacity, setBgOpacity }) {
         title="Batalkan langkah terakhir pada bentuk (Ctrl+Z)">
         <Undo2 className="mr-1.5 h-3.5 w-3.5" /> Undo
       </Button>
-      <Button size="sm" variant={s.colorMode === "status" ? "default" : "outline"} data-testid={STUDIO.colorMode}
-        aria-pressed={s.colorMode === "status"} title="Warnai kavling menurut status penjualan unit"
-        onClick={() => s.setColorMode(s.colorMode === "status" ? "mapping" : "status")}>
-        <Palette className="mr-1.5 h-3.5 w-3.5" /> {s.colorMode === "status" ? "Warna: status unit" : "Warna: pemetaan"}
+      <Select value={s.colorMode} onValueChange={s.setColorMode}>
+        <SelectTrigger data-testid={STUDIO.colorMode} className="h-8 w-[13rem] text-xs" aria-label="Mode warna kavling">
+          <Palette className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">Warna: {COLOR_MODES.find((m) => m.key === s.colorMode)?.label}</span>
+        </SelectTrigger>
+        <SelectContent>
+          {COLOR_MODES.map((m) => (
+            <SelectItem key={m.key} value={m.key} title={m.hint}>
+              <span className="block">{m.label}</span>
+              <span className="block text-[10px] text-muted-foreground">{m.hint}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button size="sm" variant="ghost" data-testid={STUDIO.paletteOpen} onClick={() => setPaletteOpen(true)} title="Atur warna tiap status (berlaku untuk seluruh tim)">
+        Atur warna
       </Button>
+      <PaletteDialog open={paletteOpen} onOpenChange={setPaletteOpen} palette={s.data?.palette}
+        canEdit={can("projects", "update")} onSave={s.savePalette} />
       <Button size="sm" variant="outline" data-testid={STUDIO.exportPng} disabled={!s.plan || !!s.busy} onClick={s.exportPng}
         title="Unduh PNG peta (dengan warna aktif) untuk brosur / WhatsApp">
         <Download className="mr-1.5 h-3.5 w-3.5" /> {s.busy === "export" ? "Merender…" : "Ekspor PNG"}

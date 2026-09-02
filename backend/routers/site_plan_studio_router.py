@@ -20,6 +20,10 @@ from site_plan_parse import parse_svg_rich
 router = APIRouter(prefix="/site-plan-studio", tags=["site-plan-studio"])
 
 
+class PaletteIn(BaseModel):
+    palette: dict
+
+
 class SvgIn(BaseModel):
     svg: str = Field(min_length=40)
     filename: Optional[str] = None
@@ -67,6 +71,20 @@ def _org(user):
 async def _project(pid: str, org: str):
     if not await db.projects.count_documents({"id": pid, "org_id": org}):
         raise HTTPException(404, "Proyek tidak ditemukan.")
+
+
+@router.get("/palette")
+async def get_palette(user: dict = Depends(require_permission("projects", "view"))):
+    """Palet warna status (penjualan & pembangunan) milik organisasi — dipakai studio, ekspor PNG."""
+    return {"data": await st.get_palette(_org(user))}
+
+
+@router.put("/palette")
+async def save_palette(payload: PaletteIn,
+                       user: dict = Depends(require_permission("projects", "update"))):
+    out = await st.save_palette(_org(user), payload.palette, user.get("email"))
+    await audit_log(user, "update", "site_plan_palettes", _org(user), {"groups": list(out)})
+    return {"data": out, "message": "Palet warna disimpan."}
 
 
 @router.get("/{project_id}")

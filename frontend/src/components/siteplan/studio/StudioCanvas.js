@@ -14,7 +14,7 @@ const parsePts = (g) => String(g?.points || "").trim().split(/\s+/).filter(Boole
  * Kanvas Studio — SVG dengan zoom/pan, gambar latar (tracing), klik bentuk, dan mode
  * gambar poligon (klik titik demi titik, klik ganda / tombol Selesai untuk menutup).
  */
-export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShapeClick, onDrawDone, onVertexMove, bgOpacity = 1, colorMode = "mapping" }) {
+export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShapeClick, onDrawDone, onVertexMove, bgOpacity = 1, colorMode = "mapping", palette }) {
   const wrapRef = useRef(null);
   const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
   const [draft, setDraft] = useState([]);
@@ -138,12 +138,12 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
             {shapes.map((s) => {
               const isLot = s.kind === "lot";
               const u = isLot ? unitsById[s.unit_id] : null;
-              const st = isLot ? lotStyle(s, u, colorMode) : (KIND_STYLE[s.kind] || KIND_STYLE.facility);
+              const st = isLot ? lotStyle(s, u, colorMode, palette) : (KIND_STYLE[s.kind] || KIND_STYLE.facility);
               const active = s.shape_id === selectedId;
               const g = active && editPts ? { type: "polygon", points: editPts.map((p) => p.join(",")).join(" ") } : (s.geom || {});
               const props = {
                 fill: st.fill, fillOpacity: bg ? 0.55 : 0.9, stroke: active ? "#2563eb" : st.stroke,
-                strokeWidth: active ? 3 : (isLot ? 1.4 : (st.width || 1)), strokeDasharray: !isLot ? st.dash : (u ? undefined : "5 3"),
+                strokeWidth: active ? Math.max(3, st.strokeWidth || 0) : (isLot ? (st.strokeWidth || 1.4) : (st.width || 1)), strokeDasharray: st.dash || (isLot && !u ? "5 3" : undefined),
                 vectorEffect: "non-scaling-stroke",
               };
               return (
@@ -153,10 +153,11 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
                   onClick={(e) => { if (tool !== "draw") { e.stopPropagation(); onShapeClick?.(s); } }}>
                   {g.type === "path" ? <path d={g.d} {...props} /> : <polygon points={g.points} {...props} />}
                   {s.centroid && (isLot || s.label) && s.kind !== "boundary" ? (
-                    <text x={s.centroid.x} y={s.centroid.y + labelSize * 0.35} textAnchor="middle"
+                    <text x={s.centroid.x} y={s.centroid.y + labelSize * (st.sub ? 0 : 0.35)} textAnchor="middle"
                       fontSize={isLot ? labelSize : labelSize * 0.7} fontWeight={isLot ? 700 : 500}
                       fill={isLot ? st.text : "#475569"} style={{ pointerEvents: "none" }}>
                       {u ? u.code : (s.label || "?")}
+                      {st.sub ? <tspan x={s.centroid.x} dy={labelSize * 0.95} fontSize={labelSize * 0.7} fontWeight={500}>{st.sub}</tspan> : null}
                     </text>
                   ) : null}
                 </g>
@@ -185,7 +186,7 @@ export default function StudioCanvas({ plan, unitsById, selectedId, tool, onShap
           </g>
         </svg>
 
-        <StudioLegend colorMode={colorMode} shapes={plan?.shapes || []} unitsById={unitsById} />
+        <StudioLegend colorMode={colorMode} shapes={plan?.shapes || []} unitsById={unitsById} palette={palette} />
         {tool === "select" && selectedId && !editPts ? (
           <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-slate-800/85 px-3 py-1 text-[11px] text-white shadow">
             Seret titik sudut biru untuk memperbaiki bentuk · Ctrl+Z membatalkan

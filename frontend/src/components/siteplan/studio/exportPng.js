@@ -1,24 +1,13 @@
 import api from "@/services/apiClient";
-import { KIND_STYLE, SALES_COLORS } from "@/components/siteplan/planStyles";
+import { KIND_STYLE } from "@/components/siteplan/planStyles";
 
 const ORDER = { boundary: 0, green: 1, water: 2, road: 3, facility: 4, lot: 5 };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-/** Warna kavling menurut mode: pemetaan (terpetakan/belum) atau status penjualan unit. */
-export const EXTRA_STATUS = {
-  handed_over: { label: "Serah Terima", fill: "#ccfbf1", stroke: "#0f766e", text: "#134e4a" },
-  other: { label: "Lainnya", fill: "#fce7f3", stroke: "#be185d", text: "#831843" },
-};
-export const statusKey = (unit) => (!unit ? "none" : (SALES_COLORS[unit.status] || EXTRA_STATUS[unit.status]) ? unit.status : "other");
+import { lotStyle as paletteLotStyle } from "@/components/siteplan/studio/studioPalette";
 
-export function lotStyle(shape, unit, colorMode) {
-  if (colorMode === "status") {
-    if (!unit) return { fill: "#f8fafc", stroke: "#94a3b8", text: "#64748b" };
-    const c = SALES_COLORS[unit.status] || EXTRA_STATUS[unit.status] || EXTRA_STATUS.other;
-    return { fill: c.fill, stroke: c.stroke, text: c.text };
-  }
-  return unit ? { fill: "#bbf7d0", stroke: "#15803d", text: "#14532d" } : { fill: "#fff7ed", stroke: "#f59e0b", text: "#9a3412" };
-}
+/** Kompatibilitas: gaya kavling dari palet (mode: mapping | sales | build | dual). */
+export const lotStyle = (shape, unit, colorMode, palette) => paletteLotStyle(unit, colorMode === "status" ? "sales" : colorMode, palette);
 
 async function backgroundDataUrl(fileId) {
   const res = await api.get(`/files/${fileId}`, { responseType: "blob" });
@@ -30,7 +19,7 @@ async function backgroundDataUrl(fileId) {
 }
 
 /** Bangun SVG mandiri (latar disematkan base64) untuk ekspor brosur. */
-export async function buildExportSvg({ plan, unitsById, colorMode, title }) {
+export async function buildExportSvg({ plan, unitsById, colorMode, title, palette }) {
   const [vx, vy, vw, vh] = String(plan.view_box || "0 0 1600 1000").split(/[\s,]+/).map(Number);
   const parts = [`<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="#ffffff"/>`];
   if (plan.background?.file_id) {
@@ -41,12 +30,13 @@ export async function buildExportSvg({ plan, unitsById, colorMode, title }) {
   [...(plan.shapes || [])].sort((a, b) => (ORDER[a.kind] ?? 9) - (ORDER[b.kind] ?? 9)).forEach((s) => {
     const isLot = s.kind === "lot";
     const u = isLot ? unitsById[s.unit_id] : null;
-    const st = isLot ? lotStyle(s, u, colorMode) : (KIND_STYLE[s.kind] || KIND_STYLE.facility);
+    const st = isLot ? lotStyle(s, u, colorMode, palette) : (KIND_STYLE[s.kind] || KIND_STYLE.facility);
     const g = s.geom || {};
-    const attrs = `fill="${st.fill}" fill-opacity="${plan.background ? 0.7 : 0.95}" stroke="${st.stroke}" stroke-width="${isLot ? 1.5 : (st.width || 1)}"${st.dash && !isLot ? ` stroke-dasharray="${st.dash}"` : ""}`;
+    const attrs = `fill="${st.fill}" fill-opacity="${plan.background ? 0.7 : 0.95}" stroke="${st.stroke}" stroke-width="${isLot ? (st.strokeWidth || 1.5) : (st.width || 1)}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ""}`;
     parts.push(g.type === "path" ? `<path d="${esc(g.d)}" ${attrs}/>` : `<polygon points="${esc(g.points)}" ${attrs}/>`);
     if (s.centroid && isLot) {
-      parts.push(`<text x="${s.centroid.x}" y="${s.centroid.y + fs * 0.35}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fs}" font-weight="700" fill="${st.text || "#334155"}">${esc(u ? u.code : (s.label || ""))}</text>`);
+      parts.push(`<text x="${s.centroid.x}" y="${s.centroid.y + fs * (st.sub ? 0 : 0.35)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fs}" font-weight="700" fill="${st.text || "#334155"}">${esc(u ? u.code : (s.label || ""))}</text>`);
+      if (st.sub) parts.push(`<text x="${s.centroid.x}" y="${s.centroid.y + fs * 1.05}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fs * 0.75}" fill="${st.text || "#334155"}">${esc(st.sub)}</text>`);
     }
   });
   if (title) {

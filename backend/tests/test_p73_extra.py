@@ -88,3 +88,16 @@ def test_shape_points_roundtrip_undo(s, project):
     assert s.delete(f"{BASE_URL}/api/site-plan-studio/{pid}/shapes/{sid}").status_code == 200
     after = s.get(f"{BASE_URL}/api/site-plan-studio/{pid}").json()["data"]["plan"]["shapes"]
     assert all(x["shape_id"] != sid for x in after)
+
+
+def test_palette_roundtrip_and_validation(s):
+    r = s.put(f"{BASE_URL}/api/site-plan-studio/palette", json={"palette": {
+        "sales": {"booked": {"fill": "#ffd6a5", "stroke": "#zz0000", "label": "Booking Fee"}},
+        "foo": {"x": {"fill": "#000000"}}, "build": {"b50": {"stroke": "#ff0000"}}}})
+    assert r.status_code == 200
+    d = r.json()["data"]
+    assert d["sales"]["booked"] == {"fill": "#ffd6a5", "label": "Booking Fee"}  # stroke tak sah dibuang
+    assert "foo" not in d and d["build"]["b50"] == {"stroke": "#ff0000"}
+    assert s.get(f"{BASE_URL}/api/site-plan-studio/palette").json()["data"] == d
+    r = s.put(f"{BASE_URL}/api/site-plan-studio/palette", json={"palette": {}})
+    assert r.json()["data"] == {}

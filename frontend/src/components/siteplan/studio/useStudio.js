@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import api from "@/services/apiClient";
 import { buildExportSvg, downloadPng } from "@/components/siteplan/studio/exportPng";
+import { COLOR_MODES, mergePalette } from "@/components/siteplan/studio/studioPalette";
+
+const MODE_KEY = "sipro.studio.colorMode";
+const readMode = () => { const v = localStorage.getItem(MODE_KEY); return COLOR_MODES.some((m) => m.key === v) ? v : "mapping"; };
 
 const pointsOf = (sh) => String(sh?.geom?.points || "").trim().split(/\s+/).filter(Boolean)
   .map((p) => p.split(",").map(Number)).filter((p) => p.length === 2 && p.every((n) => !Number.isNaN(n)));
@@ -15,7 +19,8 @@ export default function useStudio(projectId) {
   const [tool, setTool] = useState("select"); // select | draw | sequence
   const [selectedId, setSelectedId] = useState(null);
   const [seqQueue, setSeqQueue] = useState([]);
-  const [colorMode, setColorMode] = useState("mapping"); // mapping | status
+  const [colorMode, setColorModeState] = useState(readMode); // mapping | sales | build | dual (diingat per browser)
+  const setColorMode = (m) => { localStorage.setItem(MODE_KEY, m); setColorModeState(m); };
   const [undoStack, setUndoStack] = useState([]);
   const pushUndo = (entry) => setUndoStack((st) => [...st.slice(-29), entry]);
 
@@ -46,6 +51,8 @@ export default function useStudio(projectId) {
   }, [load]);
 
   const plan = data?.plan || null;
+  const palette = useMemo(() => mergePalette(data?.palette), [data]);
+  const savePalette = (diff) => run("palette", () => api.put("/site-plan-studio/palette", { palette: diff }), "Palet warna disimpan untuk seluruh tim.");
   const shapes = useMemo(() => plan?.shapes || [], [plan]);
   const units = useMemo(() => data?.units || [], [data]);
   const unitsById = useMemo(() => Object.fromEntries(units.map((u) => [u.id, u])), [units]);
@@ -118,7 +125,7 @@ export default function useStudio(projectId) {
     if (!plan) return;
     setBusy("export");
     try {
-      const svg = await buildExportSvg({ plan, unitsById, colorMode, title: data?.project_name || "" });
+      const svg = await buildExportSvg({ plan, unitsById, colorMode, palette, title: data?.project_name || "" });
       await downloadPng(svg, `siteplan-${projectId.slice(0, 8)}-${colorMode}.png`);
       toast.success("PNG site plan diunduh — siap untuk brosur / WhatsApp.");
     } catch (e) { toast.error(e?.message || "Gagal mengekspor PNG."); } finally { setBusy(""); }
@@ -145,6 +152,6 @@ export default function useStudio(projectId) {
     loading, error, busy, tool, setTool, seqQueue, setSeqQueue, setSelectedId, load,
     uploadSvg, uploadImage, removeImage, autoMatch, generate, deletePlan, addShape,
     patchShape, deleteShape, assignUnit, clickShape, projectId,
-    colorMode, setColorMode, undo, canUndo: undoStack.length > 0, exportPng,
+    colorMode, setColorMode, undo, canUndo: undoStack.length > 0, exportPng, palette, savePalette,
   };
 }

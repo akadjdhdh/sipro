@@ -13,6 +13,16 @@ Bahasa produk & komunikasi: **Indonesia**.
 - Kredensial uji: `/app/memory/test_credentials.md` (sandi demo `Sipro#2026`).
 
 ## Riwayat implementasi (terbaru di atas)
+### 2 Sep 2026 — Fase 74: Studio — mode warna diingat, palet terkonfigurasi, dua status paralel (penjualan × pembangunan) — SELESAI (iteration_124)
+- Mode warna: Pemetaan / Status penjualan / Progres pembangunan / **Gabungan** (isi = tahapan
+  customer, garis tebal = bucket progres bangun, teks kedua = %); diingat per browser
+  (`localStorage sipro.studio.colorMode`). Legenda dua kelompok pada mode gabungan.
+- Palet per organisasi: `GET/PUT /api/site-plan-studio/palette` (validasi #rrggbb, label ≤40),
+  dialog "Atur warna" (isi/garis/teks/label per status, reset per kelompok, read-only tanpa
+  `projects:update`). Dipakai kanvas, legenda, ekspor PNG. `studioPalette.js` = sumber tunggal.
+- `units_light` kini memuat `construction_progress` & `legal_stage`.
+- Uji: `tests/test_p74_palette.py` (7, testing agent) + p73/p72 → 15/15; UI iteration_124 lulus.
+
 ### 2 Sep 2026 — Fase 73: Studio — edit titik poligon + undo, PDF → latar, warna status + legenda, ekspor PNG — SELESAI (iteration_123)
 - Kanvas: kavling terpilih menampilkan titik sudut yang bisa diseret (`StudioCanvas` vtx/editPts →
   `PUT shapes/{sid}` points); flag `manual` dipertahankan saat edit titik.
